@@ -85,6 +85,12 @@ export const authApi = {
   verifyOtp: async (phone, otp) => {
     try {
       const res = await apiClient.post('/auth/verify-otp', { phone, otp });
+      if (res.data?.user) {
+        localStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
+      }
+      if (res.data?.subscription) {
+        localStorage.setItem(SUB_KEY, JSON.stringify(res.data.subscription));
+      }
       return res.data;
     } catch (err) {
       if (USE_MOCK_FALLBACK) {

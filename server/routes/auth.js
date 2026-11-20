@@ -14,9 +14,9 @@ router.post('/send-otp', async (req, res) => {
       return res.status(400).json({ error: 'Phone number is required' });
     }
 
-    // Generate fixed 123456 or random 6-digit OTP
+    // Default test OTP
     const otp = '123456';
-    otpStore.set(phone, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+    otpStore.set(phone.replace(/\s+/g, ''), { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
 
     res.json({
       success: true,
@@ -37,20 +37,28 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ error: 'Phone and OTP are required' });
     }
 
-    // Validate OTP (or allow 123456 in dev/demo mode)
-    const stored = otpStore.get(phone);
+    const cleanPhone = phone.replace(/\s+/g, '');
+    const stored = otpStore.get(cleanPhone);
     const isValid = otp === '123456' || (stored && stored.otp === otp && stored.expiresAt > Date.now());
 
     if (!isValid) {
       return res.status(400).json({ error: 'Invalid or expired verification code' });
     }
 
-    otpStore.delete(phone);
+    otpStore.delete(cleanPhone);
 
-    // Look up or create user in PostgreSQL
-    const existing = await query('SELECT * FROM users WHERE phone = $1', [phone]);
+    // Look up user: exact phone OR normalized phone OR last 10 digits
+    const digits10 = cleanPhone.replace(/\D/g, '').slice(-10);
+    const existing = await query(
+      `SELECT * FROM users 
+       WHERE phone = $1 
+          OR REPLACE(phone, ' ', '') = $2 
+          OR phone LIKE '%' || $3
+       ORDER BY id ASC LIMIT 1`,
+      [phone, cleanPhone, digits10]
+    );
+
     let user;
-
     if (existing.rows.length > 0) {
       user = existing.rows[0];
     } else {
@@ -63,6 +71,26 @@ router.post('/verify-otp', async (req, res) => {
       user = insertResult.rows[0];
     }
 
+    // Fetch user's active subscription if assigned
+    const subRes = await query(
+      `SELECT * FROM subscriptions 
+       WHERE user_id = $1 AND status = 'active'
+       ORDER BY started_at DESC LIMIT 1`,
+      [user.id]
+    );
+
+    let subscription = null;
+    if (subRes.rows.length > 0) {
+      const sub = subRes.rows[0];
+      subscription = {
+        planId: sub.plan_id,
+        planName: sub.plan_name,
+        status: sub.status,
+        startedAt: sub.started_at,
+        expiresAt: sub.expires_at
+      };
+    }
+
     res.json({
       success: true,
       user: {
@@ -71,6 +99,7 @@ router.post('/verify-otp', async (req, res) => {
         role: user.role,
         createdAt: user.created_at
       },
+      subscription,
       token: 'jwt-auth-token-' + Date.now()
     });
   } catch (error) {
