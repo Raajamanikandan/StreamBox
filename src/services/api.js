@@ -1,6 +1,19 @@
 import axios from 'axios';
 import { MOCK_MOVIES, MOCK_PLANS } from './mockData';
 
+export const DEMO_PHONE_PLANS = {
+  '9876500001': { planId: 'mobile', planName: 'Mobile', status: 'active' },
+  '9876500002': { planId: 'mobile', planName: 'Mobile', status: 'active' },
+  '9876500003': { planId: 'mobile', planName: 'Mobile', status: 'active' },
+  '9876500004': { planId: 'super', planName: 'Super', status: 'active' },
+  '9876500005': { planId: 'super', planName: 'Super', status: 'active' },
+  '9876500006': { planId: 'super', planName: 'Super', status: 'active' },
+  '9876500007': { planId: 'super', planName: 'Super', status: 'active' },
+  '9876500008': { planId: 'premium', planName: 'Premium 4K', status: 'active' },
+  '9876500009': { planId: 'premium', planName: 'Premium 4K', status: 'active' },
+  '9876500010': { planId: 'premium', planName: 'Premium 4K', status: 'active' }
+};
+
 // Storage keys
 const MOVIES_KEY = 'streambox_movies';
 const USER_KEY = 'streambox_user';
@@ -98,14 +111,20 @@ export const authApi = {
         if (otp && otp.length === 6) {
           const user = {
             id: 'usr_' + Date.now(),
-            phone: phone || sessionStorage.getItem('pending_phone') || '+1 555-0199',
+            phone: phone || sessionStorage.getItem('pending_phone') || '9876500008',
             role: (phone === '9876500010' || phone?.includes('admin')) ? 'admin' : 'user',
             createdAt: new Date().toISOString()
           };
           localStorage.setItem(USER_KEY, JSON.stringify(user));
+          const cleanPhone = (user.phone || '').replace(/\D/g, '').slice(-10);
+          const sub = DEMO_PHONE_PLANS[cleanPhone] || null;
+          if (sub) {
+            localStorage.setItem(SUB_KEY, JSON.stringify(sub));
+          }
           return {
             success: true,
             user,
+            subscription: sub,
             token: 'mock-jwt-token-' + Date.now()
           };
         }
@@ -291,7 +310,18 @@ export const plansApi = {
   getCurrentSubscription: () => {
     try {
       const stored = localStorage.getItem(SUB_KEY);
-      return stored ? JSON.parse(stored) : null;
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.status === 'active') return parsed;
+      }
+      const user = JSON.parse(localStorage.getItem(USER_KEY) || '{}');
+      const cleanPhone = (user?.phone || '').replace(/\D/g, '').slice(-10);
+      if (cleanPhone && DEMO_PHONE_PLANS[cleanPhone]) {
+        const sub = DEMO_PHONE_PLANS[cleanPhone];
+        localStorage.setItem(SUB_KEY, JSON.stringify(sub));
+        return sub;
+      }
+      return null;
     } catch {
       return null;
     }

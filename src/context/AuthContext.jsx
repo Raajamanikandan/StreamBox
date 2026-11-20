@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const sub = plansApi.getCurrentSubscription();
     setSubscription(sub);
-  }, []);
+  }, [user]);
 
   const sendOtp = async (phone) => {
     setIsLoading(true);
