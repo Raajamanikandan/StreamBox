@@ -134,6 +134,21 @@ const LoginPage = () => {
                   maxLength={10}
                   placeholder="Enter 10-digit mobile number (e.g. 9876500001)"
                   value={phoneNumber}
+                  onKeyDown={(e) => {
+                    const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'];
+                    if (e.ctrlKey || e.metaKey || allowedKeys.includes(e.key)) {
+                      return;
+                    }
+                    if (!/^\d$/.test(e.key) || phoneNumber.length >= 10) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 10);
+                    setPhoneNumber(pasted);
+                    if (formError) setFormError('');
+                  }}
                   onChange={(e) => {
                     const onlyNums = e.target.value.replace(/\D/g, '').slice(0, 10);
                     setPhoneNumber(onlyNums);
