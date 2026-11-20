@@ -298,13 +298,17 @@ export const plansApi = {
 export const adminApi = {
   createMovie: async (movieData, onProgress) => {
     try {
-      // When connected to backend:
-      // const formData = new FormData();
-      // ...
-      // const res = await apiClient.post('/admin/movies', formData, { onUploadProgress: ... });
-      // return res.data;
-      throw new Error('Fallback to mock');
-    } catch {
+      if (onProgress) {
+        for (let p = 10; p <= 90; p += 30) {
+          await new Promise((r) => setTimeout(r, 80));
+          onProgress(p);
+        }
+      }
+      const res = await apiClient.post('/admin/movies', movieData);
+      if (onProgress) onProgress(100);
+      return res.data;
+    } catch (err) {
+      if (!USE_MOCK_FALLBACK) throw err;
       // Simulate upload progress
       if (onProgress) {
         for (let p = 10; p <= 100; p += 20) {
@@ -348,17 +352,29 @@ export const adminApi = {
   },
 
   updateMovie: async (id, updates) => {
-    const movies = getStoredMovies();
-    const updated = movies.map((m) => (m.id === id ? { ...m, ...updates } : m));
-    saveStoredMovies(updated);
-    return updated.find((m) => m.id === id);
+    try {
+      const res = await apiClient.put(`/admin/movies/${id}`, updates);
+      return res.data;
+    } catch (err) {
+      if (!USE_MOCK_FALLBACK) throw err;
+      const movies = getStoredMovies();
+      const updated = movies.map((m) => (m.id === id ? { ...m, ...updates } : m));
+      saveStoredMovies(updated);
+      return updated.find((m) => m.id === id);
+    }
   },
 
   deleteMovie: async (id) => {
-    const movies = getStoredMovies();
-    const filtered = movies.filter((m) => m.id !== id);
-    saveStoredMovies(filtered);
-    return { success: true };
+    try {
+      const res = await apiClient.delete(`/admin/movies/${id}`);
+      return res.data;
+    } catch (err) {
+      if (!USE_MOCK_FALLBACK) throw err;
+      const movies = getStoredMovies();
+      const filtered = movies.filter((m) => m.id !== id);
+      saveStoredMovies(filtered);
+      return { success: true };
+    }
   }
 };
 
