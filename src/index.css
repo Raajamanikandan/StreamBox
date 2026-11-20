@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --blue-prime: #00A8E1;
+  --blue-bright: #0779FF;
+  --blue-dodger: #0078F8;
+  --blue-royal: #177BCE;
+
+  --bg-base: #0F171E;
+  --bg-deep: #121212;
+  --bg-surface: #232F3E;
+
+  --text-primary: #FFFFFF;
+  --text-muted: #B6BDC6;
+
+  --error: #FF5A5F;
+  --success: #3DDC97;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar styled strictly within the palette */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F171E;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #232F3E;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #177BCE;
+}
+
+/* Hide scrollbar for horizontal movie rows while keeping scrollability */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Accessible focus ring style */
+:focus-visible {
+  outline: 2px solid #00A8E1;
+  outline-offset: 2px;
+}
+
+/* Range input styling for video player and controls */
+input[type="range"] {
+  accent-color: #00A8E1;
+}
