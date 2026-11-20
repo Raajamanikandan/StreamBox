@@ -12,7 +12,6 @@ const LoginPage = () => {
   const { sendOtp, verifyOtp, isAuthenticated, isLoading } = useAuth();
 
   const [step, setStep] = useState(1); // 1: phone, 2: otp
-  const [countryCode, setCountryCode] = useState('+1');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otpValue, setOtpValue] = useState('');
   const [countdown, setCountdown] = useState(30);
@@ -41,19 +40,19 @@ const LoginPage = () => {
     return () => clearInterval(timer);
   }, [step, countdown]);
 
-  const fullPhone = `${countryCode} ${phoneNumber.trim()}`;
+  const cleanDigits = phoneNumber.replace(/\D/g, '').slice(0, 10);
 
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
     setFormError('');
 
-    if (!phoneNumber.trim() || phoneNumber.replace(/\D/g, '').length < 7) {
-      setFormError('Please enter a valid phone number');
+    if (cleanDigits.length !== 10) {
+      setFormError('Please enter a valid 10-digit mobile number');
       return;
     }
 
     try {
-      const res = await sendOtp(fullPhone);
+      const res = await sendOtp(cleanDigits);
       setStep(2);
       setCountdown(30);
       setCanResend(false);
@@ -76,7 +75,7 @@ const LoginPage = () => {
     }
 
     try {
-      await verifyOtp(fullPhone, otpValue);
+      await verifyOtp(cleanDigits, otpValue);
       const from = location.state?.from?.pathname || '/';
       navigate(from, { replace: true });
     } catch (err) {
@@ -88,7 +87,7 @@ const LoginPage = () => {
     if (!canResend) return;
     setFormError('');
     try {
-      await sendOtp(fullPhone);
+      await sendOtp(cleanDigits);
       setCountdown(30);
       setCanResend(false);
       setOtpValue('');
@@ -114,44 +113,40 @@ const LoginPage = () => {
           </p>
         </div>
 
-        {/* Step 1: Phone number input with country code */}
+        {/* Step 1: 10-Digit Mobile Number Input with strict validation */}
         {step === 1 && (
           <form onSubmit={handleSendOtp} className="space-y-6">
             <div className="space-y-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
-                Mobile Number
-              </label>
-              <div className="flex gap-2">
-                {/* Country Code Selector: #232F3E */}
-                <select
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className="bg-bg-surface text-text-primary border border-text-muted/20 rounded-lg px-3 py-2.5 text-sm font-medium focus:border-blue-prime focus:ring-2 focus:ring-blue-prime outline-none"
-                >
-                  <option value="+1">+1 (US/CA)</option>
-                  <option value="+44">+44 (UK)</option>
-                  <option value="+91">+91 (IN)</option>
-                  <option value="+61">+61 (AU)</option>
-                  <option value="+49">+49 (DE)</option>
-                </select>
-
-                <div className="flex-1">
-                  <Input
-                    type="tel"
-                    placeholder="Enter 10-digit number"
-                    value={phoneNumber}
-                    onChange={(e) => {
-                      setPhoneNumber(e.target.value);
-                      if (formError) setFormError('');
-                    }}
-                    icon={Phone}
-                    error={formError}
-                    autoFocus
-                  />
-                </div>
+              <div className="flex justify-between items-center">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+                  Mobile Number (10 Digits)
+                </label>
+                <span className={`text-[11px] font-mono ${cleanDigits.length === 10 ? 'text-success' : 'text-text-muted'}`}>
+                  {cleanDigits.length}/10
+                </span>
               </div>
+
+              <div className="relative">
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={10}
+                  placeholder="Enter 10-digit mobile number (e.g. 9876500001)"
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    const onlyNums = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setPhoneNumber(onlyNums);
+                    if (formError) setFormError('');
+                  }}
+                  icon={Phone}
+                  error={formError}
+                  autoFocus
+                />
+              </div>
+
               <p className="text-[11px] text-text-muted">
-                We'll text you an OTP code to confirm your phone number. Standard rates apply.
+                Enter your registered 10-digit mobile number. Demo OTP is <span className="text-blue-prime font-mono">123456</span>.
               </p>
             </div>
 
@@ -161,6 +156,7 @@ const LoginPage = () => {
               size="lg"
               isLoading={isLoading}
               className="w-full text-base"
+              disabled={cleanDigits.length !== 10}
             >
               Send OTP
             </Button>

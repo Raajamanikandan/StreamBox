@@ -99,7 +99,7 @@ export const authApi = {
           const user = {
             id: 'usr_' + Date.now(),
             phone: phone || sessionStorage.getItem('pending_phone') || '+1 555-0199',
-            role: phone?.includes('admin') ? 'admin' : 'user',
+            role: (phone === '9876500010' || phone?.includes('admin')) ? 'admin' : 'user',
             createdAt: new Date().toISOString()
           };
           localStorage.setItem(USER_KEY, JSON.stringify(user));

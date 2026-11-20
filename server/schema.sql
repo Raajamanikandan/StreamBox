@@ -15,10 +15,21 @@ CREATE TABLE IF NOT EXISTS plans (
 
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(64) PRIMARY KEY,
-  phone VARCHAR(50) UNIQUE NOT NULL,
+  phone VARCHAR(10) UNIQUE NOT NULL CHECK (phone ~ '^[0-9]{10}$'),
   role VARCHAR(20) DEFAULT 'user',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Ensure existing database column is updated to 10 characters
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'users' AND column_name = 'phone' AND character_maximum_length != 10
+  ) THEN
+    ALTER TABLE users ALTER COLUMN phone TYPE VARCHAR(10);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS movies (
   id VARCHAR(64) PRIMARY KEY,

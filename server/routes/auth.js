@@ -10,17 +10,18 @@ const otpStore = new Map();
 router.post('/send-otp', async (req, res) => {
   try {
     const { phone } = req.body;
-    if (!phone) {
-      return res.status(400).json({ error: 'Phone number is required' });
+    const digits10 = (phone || '').toString().replace(/\D/g, '').slice(-10);
+    if (!digits10 || digits10.length !== 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
     }
 
     // Default test OTP
     const otp = '123456';
-    otpStore.set(phone.replace(/\s+/g, ''), { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+    otpStore.set(digits10, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
 
     res.json({
       success: true,
-      message: `OTP sent successfully to ${phone}`,
+      message: `OTP sent successfully to ${digits10}`,
       debugOtp: otp
     });
   } catch (error) {
@@ -33,29 +34,28 @@ router.post('/send-otp', async (req, res) => {
 router.post('/verify-otp', async (req, res) => {
   try {
     const { phone, otp } = req.body;
-    if (!phone || !otp) {
-      return res.status(400).json({ error: 'Phone and OTP are required' });
+    const digits10 = (phone || '').toString().replace(/\D/g, '').slice(-10);
+    if (!digits10 || digits10.length !== 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
     }
 
-    const cleanPhone = phone.replace(/\s+/g, '');
-    const stored = otpStore.get(cleanPhone);
+    if (!otp) {
+      return res.status(400).json({ error: 'Verification OTP is required' });
+    }
+
+    const stored = otpStore.get(digits10);
     const isValid = otp === '123456' || (stored && stored.otp === otp && stored.expiresAt > Date.now());
 
     if (!isValid) {
       return res.status(400).json({ error: 'Invalid or expired verification code' });
     }
 
-    otpStore.delete(cleanPhone);
+    otpStore.delete(digits10);
 
-    // Look up user: exact phone OR normalized phone OR last 10 digits
-    const digits10 = cleanPhone.replace(/\D/g, '').slice(-10);
+    // Look up user: exact 10 digits
     const existing = await query(
-      `SELECT * FROM users 
-       WHERE phone = $1 
-          OR REPLACE(phone, ' ', '') = $2 
-          OR phone LIKE '%' || $3
-       ORDER BY id ASC LIMIT 1`,
-      [phone, cleanPhone, digits10]
+      `SELECT * FROM users WHERE phone = $1 ORDER BY id ASC LIMIT 1`,
+      [digits10]
     );
 
     let user;
@@ -63,10 +63,10 @@ router.post('/verify-otp', async (req, res) => {
       user = existing.rows[0];
     } else {
       const id = 'usr_' + Date.now();
-      const role = phone.toLowerCase().includes('admin') ? 'admin' : 'user';
+      const role = digits10 === '9876500010' ? 'admin' : 'user';
       const insertResult = await query(
         'INSERT INTO users (id, phone, role) VALUES ($1, $2, $3) RETURNING *',
-        [id, phone, role]
+        [id, digits10, role]
       );
       user = insertResult.rows[0];
     }
