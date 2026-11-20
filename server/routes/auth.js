@@ -71,12 +71,12 @@ router.post('/verify-otp', async (req, res) => {
       user = insertResult.rows[0];
     }
 
-    // Fetch user's active subscription if assigned
+    // Fetch user's active subscription if assigned (matches user.id or user.phone)
     const subRes = await query(
       `SELECT * FROM subscriptions 
-       WHERE user_id = $1 AND status = 'active'
+       WHERE (user_id = $1 OR user_id = $2) AND status = 'active'
        ORDER BY started_at DESC LIMIT 1`,
-      [user.id]
+      [user.id, digits10]
     );
 
     let subscription = null;
