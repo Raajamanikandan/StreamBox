@@ -23,7 +23,8 @@ const LoginPage = () => {
   useEffect(() => {
     if (isAuthenticated) {
       const from = location.state?.from?.pathname || '/';
-      navigate(from, { replace: true });
+      const target = from === '/login' ? '/' : from;
+      navigate(target, { replace: true });
     }
   }, [isAuthenticated, navigate, location]);
 
@@ -77,7 +78,8 @@ const LoginPage = () => {
     try {
       await verifyOtp(cleanDigits, otpValue);
       const from = location.state?.from?.pathname || '/';
-      navigate(from, { replace: true });
+      const target = from === '/login' ? '/' : from;
+      navigate(target, { replace: true });
     } catch (err) {
       setFormError(err.message || 'Invalid OTP code. Please try again.');
     }
@@ -194,7 +196,7 @@ const LoginPage = () => {
                 <ArrowLeft className="w-3.5 h-3.5 mr-1" />
                 Change number
               </button>
-              <span className="text-xs text-text-muted font-medium">{fullPhone}</span>
+              <span className="text-xs text-text-muted font-medium">{cleanDigits}</span>
             </div>
 
             <div className="space-y-3">
@@ -209,9 +211,16 @@ const LoginPage = () => {
                   if (formError) setFormError('');
                   // Auto verify once 6 digits are typed
                   if (val.length === 6) {
-                    // Slight delay for smooth UX
                     setTimeout(() => {
-                      verifyOtp(fullPhone, val).catch(() => {});
+                      verifyOtp(cleanDigits, val)
+                        .then(() => {
+                          const from = location.state?.from?.pathname || '/';
+                          const target = from === '/login' ? '/' : from;
+                          navigate(target, { replace: true });
+                        })
+                        .catch((err) => {
+                          setFormError(err.message || 'Invalid OTP code. Please try again.');
+                        });
                     }, 100);
                   }
                 }}
