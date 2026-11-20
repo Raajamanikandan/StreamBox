@@ -10,17 +10,18 @@ const otpStore = new Map();
 router.post('/send-otp', async (req, res) => {
   try {
     const { phone } = req.body;
-    if (!phone) {
-      return res.status(400).json({ error: 'Phone number is required' });
+    const digits10 = (phone || '').toString().replace(/\D/g, '').slice(-10);
+    if (!digits10 || digits10.length !== 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
     }
 
-    // Generate fixed 123456 or random 6-digit OTP
+    // Default test OTP
     const otp = '123456';
-    otpStore.set(phone, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+    otpStore.set(digits10, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
 
     res.json({
       success: true,
-      message: `OTP sent successfully to ${phone}`,
+      message: `OTP sent successfully to ${digits10}`,
       debugOtp: otp
     });
   } catch (error) {
@@ -33,34 +34,61 @@ router.post('/send-otp', async (req, res) => {
 router.post('/verify-otp', async (req, res) => {
   try {
     const { phone, otp } = req.body;
-    if (!phone || !otp) {
-      return res.status(400).json({ error: 'Phone and OTP are required' });
+    const digits10 = (phone || '').toString().replace(/\D/g, '').slice(-10);
+    if (!digits10 || digits10.length !== 10) {
+      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number' });
     }
 
-    // Validate OTP (or allow 123456 in dev/demo mode)
-    const stored = otpStore.get(phone);
+    if (!otp) {
+      return res.status(400).json({ error: 'Verification OTP is required' });
+    }
+
+    const stored = otpStore.get(digits10);
     const isValid = otp === '123456' || (stored && stored.otp === otp && stored.expiresAt > Date.now());
 
     if (!isValid) {
       return res.status(400).json({ error: 'Invalid or expired verification code' });
     }
 
-    otpStore.delete(phone);
+    otpStore.delete(digits10);
 
-    // Look up or create user in PostgreSQL
-    const existing = await query('SELECT * FROM users WHERE phone = $1', [phone]);
+    // Look up user: exact 10 digits
+    const existing = await query(
+      `SELECT * FROM users WHERE phone = $1 ORDER BY id ASC LIMIT 1`,
+      [digits10]
+    );
+
     let user;
-
     if (existing.rows.length > 0) {
       user = existing.rows[0];
     } else {
       const id = 'usr_' + Date.now();
-      const role = phone.toLowerCase().includes('admin') ? 'admin' : 'user';
+      const role = digits10 === '9876500010' ? 'admin' : 'user';
       const insertResult = await query(
         'INSERT INTO users (id, phone, role) VALUES ($1, $2, $3) RETURNING *',
-        [id, phone, role]
+        [id, digits10, role]
       );
       user = insertResult.rows[0];
+    }
+
+    // Fetch user's active subscription if assigned
+    const subRes = await query(
+      `SELECT * FROM subscriptions 
+       WHERE user_id = $1 AND status = 'active'
+       ORDER BY started_at DESC LIMIT 1`,
+      [user.id]
+    );
+
+    let subscription = null;
+    if (subRes.rows.length > 0) {
+      const sub = subRes.rows[0];
+      subscription = {
+        planId: sub.plan_id,
+        planName: sub.plan_name,
+        status: sub.status,
+        startedAt: sub.started_at,
+        expiresAt: sub.expires_at
+      };
     }
 
     res.json({
@@ -71,6 +99,7 @@ router.post('/verify-otp', async (req, res) => {
         role: user.role,
         createdAt: user.created_at
       },
+      subscription,
       token: 'jwt-auth-token-' + Date.now()
     });
   } catch (error) {

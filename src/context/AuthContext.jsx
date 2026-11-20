@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }) => {
       if (res.user) {
         setUser(res.user);
         // Refresh subscription
-        setSubscription(plansApi.getCurrentSubscription());
+        setSubscription(res.subscription || plansApi.getCurrentSubscription());
       }
       return res;
     } catch (err) {

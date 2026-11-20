@@ -1,4 +1,4 @@
-import { pool } from './db.js';
+import { pool, query } from './db.js';
 import { runMigrations } from './migrate.js';
 
 const INITIAL_PLANS = [
@@ -187,17 +187,30 @@ const INITIAL_MOVIES = [
   }
 ];
 
+const INITIAL_USERS = [
+  { id: 'usr-101', phone: '9876500001', role: 'user', planId: 'mobile', planName: 'Mobile' },
+  { id: 'usr-102', phone: '9876500002', role: 'user', planId: 'mobile', planName: 'Mobile' },
+  { id: 'usr-103', phone: '9876500003', role: 'user', planId: 'mobile', planName: 'Mobile' },
+  { id: 'usr-104', phone: '9876500004', role: 'user', planId: 'super', planName: 'Super' },
+  { id: 'usr-105', phone: '9876500005', role: 'user', planId: 'super', planName: 'Super' },
+  { id: 'usr-106', phone: '9876500006', role: 'user', planId: 'super', planName: 'Super' },
+  { id: 'usr-107', phone: '9876500007', role: 'user', planId: 'super', planName: 'Super' },
+  { id: 'usr-108', phone: '9876500008', role: 'user', planId: 'premium', planName: 'Premium 4K' },
+  { id: 'usr-109', phone: '9876500009', role: 'user', planId: 'premium', planName: 'Premium 4K' },
+  { id: 'usr-110', phone: '9876500010', role: 'admin', planId: 'premium', planName: 'Premium 4K' }
+];
+
 export const seedDatabase = async () => {
   const migrated = await runMigrations();
   if (!migrated) return;
 
   try {
     console.log('[Seed] Checking existing plans...');
-    const plansRes = await pool.query('SELECT COUNT(*) FROM plans');
+    const plansRes = await query('SELECT COUNT(*) FROM plans');
     if (parseInt(plansRes.rows[0].count, 10) === 0) {
       console.log('[Seed] Seeding subscription plans...');
       for (const p of INITIAL_PLANS) {
-        await pool.query(
+        await query(
           `INSERT INTO plans (id, name, price, period, duration, screens, quality, downloads, recommended, description)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            ON CONFLICT (id) DO NOTHING`,
@@ -208,11 +221,11 @@ export const seedDatabase = async () => {
     }
 
     console.log('[Seed] Checking existing movies...');
-    const moviesRes = await pool.query('SELECT COUNT(*) FROM movies');
+    const moviesRes = await query('SELECT COUNT(*) FROM movies');
     if (parseInt(moviesRes.rows[0].count, 10) === 0) {
       console.log('[Seed] Seeding initial movies...');
       for (const m of INITIAL_MOVIES) {
-        await pool.query(
+        await query(
           `INSERT INTO movies (id, title, year, duration, rating, plan_required, genres, description, cast_members, poster, backdrop, hls_path, stream_url, status, progress, last_position)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
            ON CONFLICT (id) DO NOTHING`,
@@ -238,6 +251,35 @@ export const seedDatabase = async () => {
       }
       console.log(`[Seed] Seeded ${INITIAL_MOVIES.length} movies.`);
     }
+
+    console.log('[Seed] Seeding 10 demo users with separate plans...');
+    const now = new Date();
+    const expiry = new Date();
+    expiry.setFullYear(expiry.getFullYear() + 1); // 1-year valid subscription
+
+    for (const u of INITIAL_USERS) {
+      // Upsert user
+      await query(
+        `INSERT INTO users (id, phone, role)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (phone) DO UPDATE SET role = $3`,
+        [u.id, u.phone, u.role]
+      );
+
+      // Check if user already has an active subscription
+      const curSub = await query(
+        `SELECT id FROM subscriptions WHERE user_id = $1 AND status = 'active'`,
+        [u.id]
+      );
+      if (curSub.rows.length === 0) {
+        await query(
+          `INSERT INTO subscriptions (user_id, plan_id, plan_name, status, started_at, expires_at)
+           VALUES ($1, $2, $3, 'active', $4, $5)`,
+          [u.id, u.planId, u.planName, now, expiry]
+        );
+      }
+    }
+    console.log(`[Seed] Seeded ${INITIAL_USERS.length} demo users with assigned plans.`);
 
     console.log('[Seed] Database initialization complete!');
   } catch (error) {

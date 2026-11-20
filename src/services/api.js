@@ -85,6 +85,12 @@ export const authApi = {
   verifyOtp: async (phone, otp) => {
     try {
       const res = await apiClient.post('/auth/verify-otp', { phone, otp });
+      if (res.data?.user) {
+        localStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
+      }
+      if (res.data?.subscription) {
+        localStorage.setItem(SUB_KEY, JSON.stringify(res.data.subscription));
+      }
       return res.data;
     } catch (err) {
       if (USE_MOCK_FALLBACK) {
@@ -93,7 +99,7 @@ export const authApi = {
           const user = {
             id: 'usr_' + Date.now(),
             phone: phone || sessionStorage.getItem('pending_phone') || '+1 555-0199',
-            role: phone?.includes('admin') ? 'admin' : 'user',
+            role: (phone === '9876500010' || phone?.includes('admin')) ? 'admin' : 'user',
             createdAt: new Date().toISOString()
           };
           localStorage.setItem(USER_KEY, JSON.stringify(user));
