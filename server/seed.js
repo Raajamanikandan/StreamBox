@@ -1,4 +1,4 @@
-import { pool } from './db.js';
+import { pool, query } from './db.js';
 import { runMigrations } from './migrate.js';
 
 const INITIAL_PLANS = [
@@ -193,11 +193,11 @@ export const seedDatabase = async () => {
 
   try {
     console.log('[Seed] Checking existing plans...');
-    const plansRes = await pool.query('SELECT COUNT(*) FROM plans');
+    const plansRes = await query('SELECT COUNT(*) FROM plans');
     if (parseInt(plansRes.rows[0].count, 10) === 0) {
       console.log('[Seed] Seeding subscription plans...');
       for (const p of INITIAL_PLANS) {
-        await pool.query(
+        await query(
           `INSERT INTO plans (id, name, price, period, duration, screens, quality, downloads, recommended, description)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            ON CONFLICT (id) DO NOTHING`,
@@ -208,11 +208,11 @@ export const seedDatabase = async () => {
     }
 
     console.log('[Seed] Checking existing movies...');
-    const moviesRes = await pool.query('SELECT COUNT(*) FROM movies');
+    const moviesRes = await query('SELECT COUNT(*) FROM movies');
     if (parseInt(moviesRes.rows[0].count, 10) === 0) {
       console.log('[Seed] Seeding initial movies...');
       for (const m of INITIAL_MOVIES) {
-        await pool.query(
+        await query(
           `INSERT INTO movies (id, title, year, duration, rating, plan_required, genres, description, cast_members, poster, backdrop, hls_path, stream_url, status, progress, last_position)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
            ON CONFLICT (id) DO NOTHING`,
