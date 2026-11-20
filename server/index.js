@@ -37,8 +37,8 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Start server and initialize database
-app.listen(PORT, async () => {
-  console.log(`[StreamBox Server] Backend running at http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', async () => {
+  console.log(`[StreamBox Server] Backend running at http://0.0.0.0:${PORT} (Local & Network)`);
   console.log('[StreamBox Server] Connecting to PostgreSQL database...');
   await seedDatabase();
 });
